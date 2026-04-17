@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ECA Parser — GDP INPS</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{
+  --bg:#f5f4f0;--s:#fff;--s2:#f0efe9;--s3:#e8e7e0;
+  --b:rgba(0,0,0,.09);--b2:rgba(0,0,0,.16);
+  --tx:#181816;--tx2:#666660;--tx3:#9a9a94;
+  --bl:#185fa5;--bl-bg:#e6f1fb;--bl-tx:#0c447c;
+  --gr:#3b6d11;--gr-bg:#eaf3de;--gr-tx:#27500a;
+  --rd:#a32d2d;--rd-bg:#fcebeb;--rd-tx:#791f1f;
+  --am:#854f0b;--am-bg:#faeeda;--am-tx:#633806;
+  --r:10px;--rs:6px;--mn:'Courier New',monospace;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#181816;--s:#222220;--s2:#2a2a28;--s3:#333330;
+    --b:rgba(255,255,255,.09);--b2:rgba(255,255,255,.16);
+    --tx:#ededea;--tx2:#9a9a94;--tx3:#666660;
+    --bl:#85b7eb;--bl-bg:#042c53;--bl-tx:#b5d4f4;
+    --gr:#97c459;--gr-bg:#173404;--gr-tx:#c0dd97;
+    --rd:#f09595;--rd-bg:#501313;--rd-tx:#f7c1c1;
+    --am:#ef9f27;--am-bg:#412402;--am-tx:#fac775;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;min-height:100vh}
+.bar{background:var(--s);border-bottom:.5px solid var(--b);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:50px;position:sticky;top:0;z-index:99}
+.bar-brand{display:flex;align-items:center;gap:10px}
+.bar-logo{width:26px;height:26px;background:var(--tx);border-radius:5px;color:var(--s);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;letter-spacing:-.5px}
+.bar-t{font-size:13px;font-weight:500}
+.bar-s{font-size:11px;color:var(--tx2)}
+.main{max-width:980px;margin:0 auto;padding:1.5rem}
+.card{background:var(--s);border:.5px solid var(--b);border-radius:var(--r);padding:1.1rem 1.25rem;margin-bottom:.9rem}
+.lbl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--tx2);margin-bottom:10px}
+.drop{border:1.5px dashed var(--b2);border-radius:var(--r);padding:2.2rem 1.5rem;text-align:center;cursor:pointer;transition:background .15s,border-color .15s;position:relative}
+.drop:hover,.drop.over{background:var(--bl-bg);border-color:var(--bl)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-ico{width:38px;height:38px;background:var(--s2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;margin:0 auto 10px}
+.drop-t{font-size:14px;font-weight:500;margin-bottom:3px}
+.drop-s{font-size:12px;color:var(--tx2)}
+.fsel{background:var(--gr-bg);border:.5px solid var(--gr);border-radius:var(--r);padding:11px 14px;display:flex;align-items:center;gap:10px}
+.fname{font-size:13px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--gr-tx)}
+.fsize{font-size:11px;color:var(--tx2)}
+.btn{padding:8px 18px;border-radius:var(--rs);font-size:13px;font-weight:500;cursor:pointer;border:.5px solid var(--b2);background:var(--s);color:var(--tx);display:inline-flex;align-items:center;gap:6px;transition:background .1s}
+.btn:hover{background:var(--s2)}.btn:active{transform:scale(.98)}.btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-p{background:var(--tx);color:var(--s);border-color:transparent}.btn-p:hover{opacity:.82;background:var(--tx)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-row{display:flex;gap:8px;margin-top:11px;align-items:center;flex-wrap:wrap}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{width:14px;height:14px;border:2px solid var(--s3);border-top-color:var(--tx);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+.prog{height:3px;background:var(--s2);border-radius:2px;margin-top:9px;overflow:hidden}
+.prog-f{height:100%;background:var(--bl);border-radius:2px;transition:width .35s ease}
+.prog-l{font-size:11px;color:var(--tx2);margin-top:5px}
+.tabs{display:flex;gap:2px;border-bottom:.5px solid var(--b);margin-bottom:.9rem}
+.tab{padding:8px 13px;font-size:13px;cursor:pointer;border:none;background:none;color:var(--tx2);border-bottom:2px solid transparent;margin-bottom:-.5px;transition:color .12s}
+.tab:hover{color:var(--tx)}.tab.on{color:var(--tx);border-bottom-color:var(--tx);font-weight:500}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media(max-width:640px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.met{background:var(--s2);border-radius:var(--rs);padding:11px 13px}
+.met-l{font-size:11px;color:var(--tx2);margin-bottom:4px}
+.met-v{font-size:15px;font-weight:500;font-family:var(--mn)}
+.met-v.rd{color:var(--rd)}.met-v.gr{color:var(--gr)}.met-v.bl{color:var(--bl)}
+.kv{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:.5px solid var(--b);font-size:13px}
+.kv:last-child{border-bottom:none}
+.kk{color:var(--tx2);flex:0 0 auto;margin-right:10px}
+.kv-v{font-family:var(--mn);font-size:12px;text-align:right;flex:1;word-break:break-all}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--tx2);padding:7px 9px;border-bottom:.5px solid var(--b)}
+td{padding:9px 9px;border-bottom:.5px solid var(--b);vertical-align:top}
+td.mn{font-family:var(--mn);font-size:12px}
+td.r{text-align:right}
+tr:last-child td{border-bottom:none}
+tr.tot td{background:var(--s2);font-weight:600}
+tr:not(.tot):hover td{background:var(--s2)}
+.al{padding:9px 13px;border-radius:var(--rs);font-size:13px;margin-bottom:11px;line-height:1.55}
+.al-bl{background:var(--bl-bg);color:var(--bl-tx);border:.5px solid rgba(24,95,165,.2)}
+.al-gr{background:var(--gr-bg);color:var(--gr-tx);border:.5px solid rgba(59,109,17,.2)}
+.al-am{background:var(--am-bg);color:var(--am-tx);border:.5px solid rgba(133,79,11,.2)}
+.al-rd{background:var(--rd-bg);color:var(--rd-tx);border:.5px solid rgba(163,45,45,.2)}
+.bdg{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.bdg-rd{background:var(--rd-bg);color:var(--rd-tx)}.bdg-gr{background:var(--gr-bg);color:var(--gr-tx)}
+.bdg-bl{background:var(--bl-bg);color:var(--bl-tx)}.bdg-am{background:var(--am-bg);color:var(--am-tx)}
+.step{display:flex;gap:11px;padding:11px 0;border-bottom:.5px solid var(--b)}
+.step:last-child{border-bottom:none}
+.sn{width:22px;height:22px;min-width:22px;border-radius:50%;background:var(--bl-bg);color:var(--bl-tx);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.st{font-size:13px;font-weight:500;margin-bottom:3px}
+.sd{font-size:12px;color:var(--tx2);line-height:1.6}
+.f24r{border:.5px solid var(--b);border-radius:var(--rs);padding:13px;margin-bottom:9px}
+.f24-lbl{font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--tx2);margin-bottom:9px}
+.conf{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500}
+.conf-ok{background:var(--gr-bg);color:var(--gr-tx)}.conf-warn{background:var(--am-bg);color:var(--am-tx)}.conf-err{background:var(--rd-bg);color:var(--rd-tx)}
+hr{border:none;border-top:.5px solid var(--b);margin:13px 0}
+#load-card,#results,#err-box{display:none}
+.raw-pre{background:var(--s2);border-radius:var(--rs);padding:12px;font-family:var(--mn);font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:320px;overflow-y:auto;color:var(--tx2);border:.5px solid var(--b)}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="bar-brand">
+    <div class="bar-logo">ECA</div>
+    <div>
+      <div class="bar-t">ECA Parser — GDP INPS</div>
+      <div class="bar-s">Analisi locale · nessuna API · nessun invio dati</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <span id="conf-badge"></span>
+    <button class="btn btn-sm" id="reset-btn" onclick="resetApp()" style="display:none">Nuova analisi</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- UPLOAD -->
+  <div class="card" id="up-card">
+    <div class="lbl">Carica documento ECA — PDF testuale nativo INPS</div>
+    <div class="drop" id="dropzone">
+      <input type="file" accept=".pdf" id="file-in" onchange="onFile(this.files[0])">
+      <div class="drop-ico">📄</div>
+      <div class="drop-t">Trascina il PDF ECA oppure clicca per selezionarlo</div>
+      <div class="drop-s">Supportati: Avviso Bonario, ECA PV, ECA Prima Comunicazione · PDF testuale (non scansione)</div>
+    </div>
+    <div id="fsel-box" style="display:none;" class="fsel">
+      <span style="font-size:18px;">📄</span>
+      <div style="flex:1;min-width:0;">
+        <div class="fname" id="fname">—</div>
+        <div class="fsize" id="fsize">—</div>
+      </div>
+      <button class="btn btn-sm" onclick="clearFile()">Rimuovi</button>
+    </div>
+    <div id="prog-wrap" style="display:none;">
+      <div class="prog"><div class="prog-f" id="progf" style="width:0%"></div></div>
+      <div class="prog-l" id="progl">Lettura PDF...</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" id="parse-btn" onclick="runParse()" disabled>Analizza documento</button>
+      <span style="font-size:12px;color:var(--tx2);" id="main-st"></span>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div class="card" id="load-card">
+    <div style="text-align:center;padding:1.5rem;">
+      <div class="spin" style="width:20px;height:20px;margin-bottom:11px;"></div>
+      <div style="font-size:13px;color:var(--tx2);" id="load-msg">Analisi struttura in corso...</div>
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <div class="card al-rd" id="err-box"><strong>Errore:</strong> <span id="err-msg"></span></div>
+
+  <!-- RESULTS -->
+  <div id="results">
+    <div class="tabs">
+      <button class="tab on" onclick="tab('dati')">Riepilogo</button>
+      <button class="tab" onclick="tab('debito')">Quadro debitorio</button>
+      <button class="tab" onclick="tab('proc')">Procedura</button>
+      <button class="tab" onclick="tab('f24')">F24</button>
+      <button class="tab" onclick="tab('raw')">Testo estratto</button>
+    </div>
+
+    <!-- TAB RIEPILOGO -->
+    <div id="tab-dati">
+      <div class="g4" style="margin-bottom:.9rem;">
+        <div class="met"><div class="met-l">Importo da versare</div><div class="met-v rd" id="m-versare">—</div></div>
+        <div class="met"><div class="met-l">Sanzioni sospese</div><div class="met-v gr" id="m-sanz">—</div></div>
+        <div class="met"><div class="met-l">Periodo competenza</div><div class="met-v" id="m-periodo">—</div></div>
+        <div class="met"><div class="met-l">Scadenza 30gg</div><div class="met-v bl" id="m-scad">—</div></div>
+      </div>
+      <div class="g2">
+        <div class="card" style="margin-bottom:0"><div class="lbl">Identificativi</div><div id="id-bl"></div></div>
+        <div class="card" style="margin-bottom:0"><div class="lbl">Stato posizione</div><div id="st-bl"></div></div>
+      </div>
+      <div style="margin-top:.9rem;" id="nota-bl"></div>
+      <div style="margin-top:.9rem;" id="campi-mancanti-bl"></div>
+    </div>
+
+    <!-- TAB DEBITO -->
+    <div id="tab-debito" style="display:none">
+      <div class="card">
+        <div class="lbl">Prospetto 1 — Obbligatori</div>
+        <div class="tw">
+          <table>
+            <thead><tr>
+              <th>Gestione</th><th>Causale</th><th>Chiave pag.</th>
+              <th class="r">Importo totale</th><th class="r">Sanzioni N/D</th><th class="r">Da versare</th>
+            </tr></thead>
+            <tbody id="tb-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB PROCEDURA -->
+    <div id="tab-proc" style="display:none">
+      <div id="proc-al"></div>
+      <div class="card"><div class="lbl">Workflow operativo</div><div id="steps-bl"></div></div>
+    </div>
+
+    <!-- TAB F24 -->
+    <div id="tab-f24" style="display:none">
+      <div class="card">
+        <div class="al al-bl">Compilare <strong>una riga F24EP</strong> (o F24 ordinario — sez. INPS) per ciascuna causale contributo. La <strong>chiave di pagamento</strong> va nel campo <em>Codice Posizione</em>.</div>
+        <div id="f24-bl"></div>
+        <hr>
+        <div style="font-size:11px;color:var(--tx2);">Versamento unica soluzione entro 30 giorni. Per rateazione: domanda INPS tramite Cassetto Previdenziale entro la stessa scadenza.</div>
+      </div>
+    </div>
+
+    <!-- TAB RAW -->
+    <div id="tab-raw" style="display:none">
+      <div class="card">
+        <div class="lbl">Testo grezzo estratto dal PDF (debug)</div>
+        <pre class="raw-pre" id="raw-pre"></pre>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let rawText = '';
+let parsed = null;
+
+// ─── DRAG & DROP ──────────────────────────────────────────────────────────────
+document.getElementById('dropzone').addEventListener('dragover', e => {
+  e.preventDefault(); document.getElementById('dropzone').classList.add('over');
+});
+document.getElementById('dropzone').addEventListener('dragleave', () => {
+  document.getElementById('dropzone').classList.remove('over');
+});
+document.getElementById('dropzone').addEventListener('drop', e => {
+  e.preventDefault(); document.getElementById('dropzone').classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f?.type === 'application/pdf') onFile(f);
+  else showErr('Seleziona un file PDF valido.');
+});
+
+// ─── FILE ─────────────────────────────────────────────────────────────────────
+async function onFile(file) {
+  if (!file) return;
+  document.getElementById('dropzone').style.display = 'none';
+  document.getElementById('fsel-box').style.display = 'flex';
+  document.getElementById('fname').textContent = file.name;
+  document.getElementById('fsize').textContent = (file.size/1024).toFixed(1) + ' KB';
+  document.getElementById('prog-wrap').style.display = 'block';
+  document.getElementById('parse-btn').disabled = true;
+  document.getElementById('main-st').textContent = '';
+  hideErr();
+
+  try {
+    rawText = await extractPDF(file);
+    setP(100, 'Estrazione completata');
+    if (rawText.trim().length < 100) {
+      throw new Error('Testo insufficiente — il PDF potrebbe essere una scansione (immagine). Utilizzare un PDF testuale nativo INPS.');
+    }
+    document.getElementById('parse-btn').disabled = false;
+    document.getElementById('main-st').textContent = rawText.length + ' caratteri estratti';
+  } catch(e) {
+    showErr(e.message);
+    clearFile();
+  }
+}
+
+function clearFile() {
+  rawText = '';
+  document.getElementById('dropzone').style.display = '';
+  document.getElementById('fsel-box').style.display = 'none';
+  document.getElementById('prog-wrap').style.display = 'none';
+  document.getElementById('file-in').value = '';
+  document.getElementById('parse-btn').disabled = true;
+  document.getElementById('main-st').textContent = '';
+  hideErr();
+}
+
+// ─── PDF EXTRACTION ───────────────────────────────────────────────────────────
+async function extractPDF(file) {
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+  let out = '';
+  const n = pdf.numPages;
+  for (let i = 1; i <= n; i++) {
+    setP(Math.round(i/n*85), `Pagina ${i} di ${n}...`);
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    // Reconstruct lines by Y coordinate (preserves table row order)
+    const map = {};
+    content.items.forEach(item => {
+      if (!item.str?.trim()) return;
+      const y = Math.round(item.transform[5]);
+      if (!map[y]) map[y] = [];
+      map[y].push({ x: item.transform[4], s: item.str });
+    });
+    Object.keys(map).map(Number).sort((a,b)=>b-a).forEach(y => {
+      out += map[y].sort((a,b)=>a.x-b.x).map(i=>i.s).join(' ') + '\n';
+    });
+    out += `\n=== P${i} ===\n\n`;
+  }
+  return out;
+}
+
+function setP(pct, lbl) {
+  document.getElementById('progf').style.width = pct + '%';
+  document.getElementById('progl').textContent = lbl;
+}
+
+// ─── MAIN PARSE PIPELINE ──────────────────────────────────────────────────────
+function runParse() {
+  if (!rawText) return;
+  document.getElementById('load-card').style.display = '';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('parse-btn').disabled = true;
+  hideErr();
+
+  const steps = ['Rilevamento sezioni documento...','Parsing identificativi...','Parsing gestioni e importi...','Generazione workflow...'];
+  let si = 0;
+  const iv = setInterval(() => document.getElementById('load-msg').textContent = steps[si++ % steps.length], 600);
+
+  setTimeout(() => {
+    clearInterval(iv);
+    try {
+      parsed = parseECA(rawText);
+      document.getElementById('load-card').style.display = 'none';
+      renderResults(parsed);
+      document.getElementById('results').style.display = '';
+      document.getElementById('reset-btn').style.display = '';
+    } catch(e) {
+      document.getElementById('load-card').style.display = 'none';
+      document.getElementById('parse-btn').disabled = false;
+      showErr('Errore parsing: ' + e.message);
+    }
+  }, 300);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  PARSER ENGINE — schema fisso INPS ECA/Avviso Bonario GDP
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const N  = '([\\d]{1,3}(?:\\.[\\d]{3})*,[\\d]{2})'; // numero italiano: 1.234,56
+const NN = '(-?[\\d]{1,3}(?:\\.[\\d]{3})*,[\\d]{2})';
+
+function ex(text, re, g=1) {
+  const m = text.match(re);
+  return m ? m[g].trim() : null;
+}
+
+function parseECA(t) {
+  const ids   = parseIds(t);
+  const stato = parseStato(t, ids.data_protocollo);
+  const gest  = parseGestioni(t);
+  const tot   = parseTotali(t, gest);
+
+  // Confidence score: count non-null key fields
+  const keyFields = [
+    ids.protocollo, ids.data_protocollo, ids.ente, ids.cf,
+    stato.periodo, stato.tipo_doc,
+    gest.length > 0 ? 'ok' : null,
+    tot.da_versare !== '—' ? 'ok' : null
+  ];
+  const filled = keyFields.filter(Boolean).length;
+  const confidence = Math.round(filled / keyFields.length * 100);
+
+  return { ids, stato, gest, tot, rawText, confidence };
+}
+
+// ── Identificativi ────────────────────────────────────────────────────────────
+function parseIds(t) {
+  // Protocollo: "Protocollo n° INPS.6400.15/04/2026.0115259"
+  const prot = ex(t, /Protocollo\s+n[°o°]?\s*(INPS[\w.\/\-]+)/i)
+            || ex(t, /Protocollo\s*n[°o°]?\s*([\w.]+\/\d{4}[\w.\/]+)/i);
+
+  // Data protocollo: "Data Protocollo 15/04/2026"
+  const data_prot = ex(t, /Data\s+Protocollo\s+(\d{1,2}\/\d{2}\/\d{4})/i);
+
+  // CF: "C.F. 84002030769 - 00000"
+  const cfm = t.match(/C\.F\.\s*([\d]{11})\s*-\s*(\d+)/);
+  const cf = cfm ? `${cfm[1]} - ${cfm[2]}` : null;
+
+  // Ente: riga dopo "Azienda/amministrazione:" o "COMUNE DI …" in maiuscolo
+  let ente = ex(t, /Azienda\/amministrazione:.*?C\.F\.[\s\d.\-]+\n?\s*([A-ZÀÈÉÌÒÙ][A-ZÀÈÉÌÒÙ\s\'\-]+)(?:\n|$)/m)
+          || ex(t, /COMUNE\s+DI\s+([A-ZÀÈÉÌÒÙ][A-ZÀÈÉÌÒÙ\s\-\']+)(?:\n|Protocollo|VIA|C\.F\.)/m);
+  if (ente) ente = ente.replace(/\s+/g,' ').trim();
+
+  // Sede INPS: "Direzione Provinciale/... \n POTENZA"
+  const sede_m = t.match(/Direzione\s+Provinciale[^:\n]*:?\s*\n?\s*([A-ZÀÈÉÌÒÙ]{3,})/m);
+  const sede = sede_m ? sede_m[1].trim() : null;
+
+  // Responsabile: "Il Responsabile\n\nNOME COGNOME"
+  const resp_m = t.match(/Il\s+Responsabile\s*\n[\s\n]*([A-ZÀÈÉÌÒÙ][A-ZÀÈÉÌÒÙA-Za-z\s]+)(?:\n|$)/m);
+  const responsabile = resp_m ? resp_m[1].trim() : null;
+
+  // Data elaborazione
+  const data_elab = ex(t, /Data\s+elaborazione:\s*(\d{1,2}\/\d{2}\/\d{4})/i);
+
+  return { protocollo: prot, data_protocollo: data_prot, ente, cf, sede, responsabile, data_elaborazione: data_elab };
+}
+
+// ── Stato ─────────────────────────────────────────────────────────────────────
+function parseStato(t, dataProt) {
+  // Periodo: "Estratto conto del periodo: 02/2016"
+  const periodo = ex(t, /Estratto\s+conto\s+del\s+periodo:\s*(\d{2}\/\d{4})/i);
+
+  // Tipo documento
+  let tipo_doc = 'ECA Prima Comunicazione';
+  if (/AVVISO\s+BONARIO/i.test(t)) tipo_doc = 'ECA PV — Avviso Bonario';
+  else if (/ECA\s+PV/i.test(t))    tipo_doc = 'ECA Post Validazione';
+
+  // Stato quadratura
+  const sq_count = (t.match(/Squadrato/gi) || []).length;
+  const stato_quad = sq_count > 0 ? 'Squadrato' : ((/Quadrato/i.test(t)) ? 'Quadrato' : '—');
+
+  // Scadenza contributi: prima data nel blocco "Riepilogo importi"
+  const sc_m = t.match(/Riepilogo\s+importi[^]*?(\d{2}\/\d{2}\/\d{4})/i);
+  const scadenza_contrib = sc_m ? sc_m[1] : ex(t, /(\d{2}\/\d{2}\/\d{4})\s+[\d.,]+\s+[\d.,]+\s+[\d.,]+\s+[\d.,]+/m);
+
+  // Sospensione sanzioni DL 200/2025
+  const sanz_sospese = /31\s+dicembre\s+2026|31\.12\.2026/i.test(t);
+
+  // Termine 30gg
+  const termine = calcola30gg(dataProt);
+
+  return { periodo, tipo_doc, stato_quad, scadenza_contrib, sanz_sospese, termine };
+}
+
+// ── Gestioni (cuore del parser) ────────────────────────────────────────────────
+//  Cerca le righe dell'Avviso Bonario con pattern fisso INPS:
+//  SIGLA [Prosp. N - Obbl.] CHIAVE CAUSALE MESE_DAL MESE_AL ANNO N N N N N
+function parseGestioni(t) {
+  const DEFS = [
+    { sigla: 'C.P.D.E.L.', nome: 'Cassa Pensione Dipendenti Enti Locali', pat: 'C\\.P\\.D\\.E\\.L\\.' },
+    { sigla: 'I.N.A.D.E.L.', nome: 'INADEL',  pat: 'I\\.N\\.A\\.D\\.E\\.L\\.' },
+    { sigla: 'Credito',     nome: 'Gestione Unica del Credito',  pat: 'Credito' },
+    { sigla: 'T.F.S.',      nome: 'TFS — Trattamento Fine Servizio', pat: 'T\\.F\\.S\\.' },
+    { sigla: 'T.F.R.',      nome: 'TFR — Trattamento Fine Rapporto', pat: 'T\\.F\\.R\\.' },
+    { sigla: 'E.N.P.D.E.P.', nome: 'ENPDEP', pat: 'E\\.N\\.P\\.D\\.E\\.P\\.' },
+    { sigla: 'I.N.P.D.A.P.', nome: 'INPDAP', pat: 'I\\.N\\.P\\.D\\.A\\.P\\.' },
+  ];
+
+  const results = [];
+
+  for (const d of DEFS) {
+    // Pattern: sigla → (fino a 160 chars) → chiave(7-10 cifre) → causale(P+3digit) →
+    //          2+2+4 (mesi/anno) → 5 numeri italiani
+    const re = new RegExp(
+      d.pat +
+      '[\\s\\S]{0,160}?' +
+      '(\\d{7,10})' +                          // chiave pagamento
+      '\\s+(P\\d{3})' +                         // causale contributo
+      '\\s+\\d{2}\\s+\\d{2}\\s+\\d{4}' +       // mese_dal mese_al anno
+      '\\s+' + N +                              // importo dovuto totale
+      '\\s+' + N +                              // dichiarato/addebitato non versato
+      '\\s+' + N +                              // sanzioni/interessi
+      '\\s+' + N +                              // sanzioni NON dovuti (*)
+      '\\s+' + N,                               // importo da versare (*)
+      'i'
+    );
+
+    const m = t.match(re);
+    if (m) {
+      results.push({
+        sigla:              d.sigla,
+        nome:               d.nome,
+        chiave_pagamento:   m[1],
+        causale:            m[2],
+        importo_totale:     m[3],
+        dichiarato_nv:      m[4],
+        sanzioni:           m[5],
+        sanz_non_dovute:    m[6],
+        da_versare:         m[7],
+      });
+    }
+  }
+
+  // Fallback: se Avviso Bonario non trovato, leggi Riepilogo per gestione (solo importi base)
+  if (results.length === 0) {
+    const FALL = [
+      { sigla:'C.P.D.E.L.', nome:'Cassa Pensione Dipendenti Enti Locali',
+        re: new RegExp(`Cassa\\s+Pensione\\s+Dipendenti\\s+Enti\\s+Locali\\s+${NN}\\s+Squadrato`, 'i') },
+      { sigla:'I.N.A.D.E.L.', nome:'INADEL',
+        re: new RegExp(`I\\.N\\.A\\.D\\.E\\.L\\.\\s+${NN}\\s+Squadrato`, 'i') },
+      { sigla:'Credito', nome:'Gestione Unica del Credito',
+        re: new RegExp(`Gestione\\s+Unica\\s+del\\s+Credito\\s+${NN}\\s+Squadrato`, 'i') },
+    ];
+    for (const f of FALL) {
+      const m = t.match(f.re);
+      if (m) {
+        const v = m[1].replace('-','');
+        results.push({ sigla:f.sigla, nome:f.nome, chiave_pagamento:'—', causale:'—',
+          importo_totale:v, dichiarato_nv:v, sanzioni:'—', sanz_non_dovute:'—', da_versare:v });
+      }
+    }
+  }
+
+  return results;
+}
+
+// ── Totali ────────────────────────────────────────────────────────────────────
+function parseTotali(t, gest) {
+  // "Totale 3.868,92 2.607,66" (importo_totale + da_versare, 2 soli valori)
+  const tot_m = t.match(new RegExp('Totale\\s+' + N + '\\s+' + N, 'i'));
+
+  let importo_totale = tot_m ? tot_m[1] : null;
+  let da_versare     = tot_m ? tot_m[2] : null;
+
+  // Ricalcolo da gestioni se non trovato
+  if (!importo_totale && gest.length) {
+    importo_totale = fmtIT(gest.reduce((s,g) => s + parseIT(g.importo_totale), 0));
+    da_versare     = fmtIT(gest.reduce((s,g) => s + parseIT(g.da_versare), 0));
+  }
+
+  const sanz_non_dovute = fmtIT(gest.reduce((s,g) => s + parseIT(g.sanz_non_dovute), 0));
+
+  return {
+    importo_totale:    importo_totale || '—',
+    sanz_non_dovute,
+    da_versare:        da_versare     || '—',
+  };
+}
+
+// ── Helpers numeri ────────────────────────────────────────────────────────────
+function parseIT(s) {
+  if (!s || s === '—') return 0;
+  return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
+}
+function fmtIT(n) {
+  return n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// ── Calcola 30 giorni ─────────────────────────────────────────────────────────
+function calcola30gg(s) {
+  if (!s) return '—';
+  const [d,m,y] = s.split('/').map(Number);
+  const dt = new Date(y, m-1, d);
+  dt.setDate(dt.getDate() + 30);
+  return dt.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+
+// ── Procedura (rule engine) ───────────────────────────────────────────────────
+function buildProcedura(p) {
+  const { ids, stato, gest, tot } = p;
+  const steps = [];
+
+  steps.push({
+    t: 'Accesso — Cassetto Previdenziale Contribuente',
+    d: `Accedere a inps.it → Servizi per aziende e consulenti → Cassetto Previdenziale Contribuente (SPID/CIE/CNS). Cercare l'ente "${ids.ente || '—'}" (C.F. ${ids.cf || '—'}). Dal menu laterale: Servizi GDP → Note di Debito ECA. Filtrare per periodo ${stato.periodo || '—'}.`
+  });
+
+  steps.push({
+    t: `Verifica DMA — Prospetto 1 Obbligatori (periodo ${stato.periodo || '—'})`,
+    d: `Nel dettaglio ECA, accedere a Dettaglio Quadratura → Dettaglio Dovuto tipo Denuncia (DMA). Verificare che per le gestioni ${gest.map(g=>g.sigla).join(', ')} risulti una denuncia congruente (origine "Denun Cong"). Se la colonna "Importi Versati" è vuota, il versamento è assente. Controllare eventuali scostamenti tra dichiarato e versato su PassWeb/UNIEMENS.`
+  });
+
+  const chiavi = gest.filter(g=>g.chiave_pagamento !== '—').map(g=>`${g.sigla}: ${g.chiave_pagamento}`).join(' · ');
+  steps.push({
+    t: 'Verifica F24 — Chiave di pagamento e causale',
+    d: `Ricercare nel sistema di tesoreria dell'ente i mandati F24EP con scadenza ${stato.scadenza_contrib || '—'}. Verificare presenza causali ${gest.map(g=>g.causale).filter(c=>c!=='—').join(', ')} e corrispondenza chiavi di pagamento${chiavi ? ': ' + chiavi : ''}. Un versamento senza chiave posizione potrebbe non essere abbinato automaticamente dal sistema INPS.`
+  });
+
+  if (stato.tipo_doc.includes('Avviso Bonario')) {
+    steps.push({
+      t: `Azione principale — Entro ${stato.termine} (30 gg da ricezione)`,
+      d: `OPZIONE A — Versamento unica soluzione: F24EP una riga per causale con chiave nel campo Codice Posizione. Importo totale: € ${tot.da_versare}${stato.sanz_sospese ? ' (sanzioni escluse, non dovute)' : ''}. OPZIONE B — Rateazione: domanda INPS tramite modulo su inps.it entro la stessa data. La domanda deve includere tutti i contributi scaduti. Sull'importo rateizzato si applicano interessi di dilazione dal tasso legale.`
+    });
+  }
+
+  if (stato.sanz_sospese) {
+    steps.push({
+      t: 'Agevolazione DL 200/2025 — Sanzioni non dovute',
+      d: `Periodi di competenza ≤ 31/12/2021: le sanzioni civili (€ ${tot.sanz_non_dovute}) NON sono dovute a condizione che il versamento integrale o la domanda di rateazione sia presentata entro il 31/12/2026 (art. 1, co. 7, DL 200/2025). Non includere le sanzioni nel versamento F24. Versare esclusivamente l'importo del capitale: € ${tot.da_versare}.`
+    });
+  }
+
+  steps.push({
+    t: 'Comunicazione — Cassetto Bidirezionale',
+    d: `Se il versamento risulta già effettuato: inviare comunicazione tramite Cassetto Bidirezionale (Cassetto Previdenziale → Comunicazione Bidirezionale) allegando quietanza F24 con data, importo e causali. Per contestare l'addebito: ricorso ai Comitati di Vigilanza della Gestione Pubblica entro 30 giorni dalla ricezione, esclusivamente via inps.it → Imprese e Liberi Professionisti → Ricorsi Amministrativi.`
+  });
+
+  return steps;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderResults(p) {
+  const { ids, stato, gest, tot, confidence } = p;
+
+  // Confidence badge
+  const ctype = confidence >= 80 ? 'conf-ok' : confidence >= 55 ? 'conf-warn' : 'conf-err';
+  const clbl  = confidence >= 80 ? 'Alta affidabilità' : confidence >= 55 ? 'Affidabilità parziale' : 'Dati incompleti';
+  document.getElementById('conf-badge').innerHTML =
+    `<span class="conf ${ctype}">${clbl} ${confidence}%</span>`;
+
+  // Metrics
+  document.getElementById('m-versare').textContent = '€ ' + tot.da_versare;
+  document.getElementById('m-sanz').textContent    = '€ ' + tot.sanz_non_dovute;
+  document.getElementById('m-periodo').textContent = stato.periodo || '—';
+  document.getElementById('m-scad').textContent    = stato.termine || '—';
+
+  // ID block
+  document.getElementById('id-bl').innerHTML = kvList([
+    ['Protocollo INPS',    ids.protocollo       || miss()],
+    ['Data protocollo',    ids.data_protocollo  || miss()],
+    ['Ente',               ids.ente             || miss()],
+    ['Codice Fiscale',     ids.cf               || miss()],
+    ['Sede INPS',          ids.sede             || miss()],
+    ['Responsabile',       ids.responsabile     || miss()],
+    ['Data elaborazione',  ids.data_elaborazione|| miss()],
+  ]);
+
+  // Stato block
+  document.getElementById('st-bl').innerHTML = kvList([
+    ['Periodo competenza',    stato.periodo      || miss()],
+    ['Tipo documento',        bdg(stato.tipo_doc||'—','bl')],
+    ['Stato quadratura',      bdg(stato.stato_quad||'—', stato.stato_quad==='Quadrato'?'gr':'rd')],
+    ['Scadenza contributi',   stato.scadenza_contrib || miss()],
+    ['Termine 30gg',          `<strong>${stato.termine||'—'}</strong>`],
+    ['Gestioni rilevate',     String(gest.length)],
+  ]);
+
+  // Nota sanzioni
+  document.getElementById('nota-bl').innerHTML = stato.sanz_sospese
+    ? `<div class="al al-gr">Sanzioni civili <strong>non dovute</strong> per periodi ≤ 31/12/2021 — versamento integrale o rateazione entro 31/12/2026 (art. 1, co. 7, DL 200/2025). Importo sospeso: € ${tot.sanz_non_dovute}.</div>`
+    : '';
+
+  // Campi mancanti
+  const mancanti = [];
+  if (!ids.protocollo) mancanti.push('Protocollo INPS');
+  if (gest.length === 0) mancanti.push('Gestioni/importi');
+  if (tot.da_versare === '—') mancanti.push('Totale da versare');
+  document.getElementById('campi-mancanti-bl').innerHTML = mancanti.length
+    ? `<div class="al al-am"><strong>Campi non estratti:</strong> ${mancanti.join(', ')}. Verificare che il PDF sia testuale nativo INPS e non una scansione.</div>` : '';
+
+  // Debito table
+  let rows = gest.map(g => `<tr>
+    <td><strong>${g.sigla}</strong><br><span style="font-size:11px;color:var(--tx2)">${g.nome}</span></td>
+    <td class="mn">${g.causale}</td>
+    <td class="mn">${g.chiave_pagamento}</td>
+    <td class="mn r">€ ${g.importo_totale}</td>
+    <td class="mn r" style="color:var(--gr)">€ ${g.sanz_non_dovute}</td>
+    <td class="mn r"><strong>€ ${g.da_versare}</strong></td>
+  </tr>`).join('');
+  if (gest.length === 0) rows = '<tr><td colspan="6" style="color:var(--tx2);text-align:center;padding:1.5rem;">Nessuna gestione estratta — possibile PDF non testuale</td></tr>';
+  rows += `<tr class="tot"><td colspan="3">Totale</td>
+    <td class="mn r">€ ${tot.importo_totale}</td>
+    <td class="mn r" style="color:var(--gr)">€ ${tot.sanz_non_dovute}</td>
+    <td class="mn r">€ ${tot.da_versare}</td></tr>`;
+  document.getElementById('tb-body').innerHTML = rows;
+
+  // Procedura
+  const proc = buildProcedura(p);
+  document.getElementById('proc-al').innerHTML = stato.tipo_doc.includes('Avviso Bonario')
+    ? `<div class="al al-am"><strong>Attenzione:</strong> Avviso Bonario con validità 30 giorni. Scadenza azione: <strong>${stato.termine}</strong>. Mancata risposta → avviso di addebito esecutivo.</div>` : '';
+  document.getElementById('steps-bl').innerHTML = proc.map((s,i) => `
+    <div class="step"><div class="sn">${i+1}</div>
+    <div><div class="st">${s.t}</div><div class="sd">${s.d}</div></div></div>`).join('');
+
+  // F24
+  document.getElementById('f24-bl').innerHTML = gest.length
+    ? gest.map(g => `
+      <div class="f24r">
+        <div class="f24-lbl">${g.nome}</div>
+        <div class="g4" style="gap:8px">
+          <div class="met"><div class="met-l">Causale contributo</div><div class="met-v bl">${g.causale}</div></div>
+          <div class="met"><div class="met-l">Codice posizione</div><div class="met-v">${g.chiave_pagamento}</div></div>
+          <div class="met"><div class="met-l">Periodo (da/a)</div><div class="met-v">${stato.periodo||'—'}</div></div>
+          <div class="met"><div class="met-l">Importo</div><div class="met-v rd">€ ${g.da_versare}</div></div>
+        </div>
+      </div>`).join('')
+    : '<div style="color:var(--tx2);font-size:13px;padding:1rem 0;">Nessuna gestione rilevata.</div>';
+
+  // Raw
+  document.getElementById('raw-pre').textContent = rawText.slice(0, 8000) + (rawText.length > 8000 ? '\n\n[... troncato ...]' : '');
+}
+
+// ─── UI HELPERS ───────────────────────────────────────────────────────────────
+function kvList(pairs) {
+  return pairs.map(([k,v]) => `<div class="kv"><span class="kk">${k}</span><span class="kv-v">${v}</span></div>`).join('');
+}
+function bdg(txt, type) { return `<span class="bdg bdg-${type}">${txt}</span>`; }
+function miss() { return `<span style="color:var(--tx3);font-style:italic">non rilevato</span>`; }
+function tab(name) {
+  ['dati','debito','proc','f24','raw'].forEach(n => {
+    document.getElementById('tab-' + n).style.display = n === name ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((el,i) => {
+    el.classList.toggle('on', ['dati','debito','proc','f24','raw'][i] === name);
+  });
+}
+function showErr(msg) {
+  document.getElementById('err-msg').textContent = msg;
+  document.getElementById('err-box').style.display = '';
+}
+function hideErr() { document.getElementById('err-box').style.display = 'none'; }
+function resetApp() {
+  clearFile(); rawText = ''; parsed = null;
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('reset-btn').style.display = 'none';
+  document.getElementById('conf-badge').innerHTML = '';
+  document.getElementById('load-card').style.display = 'none';
+  hideErr(); tab('dati');
+}
+</script>
+</body>
+</html>
